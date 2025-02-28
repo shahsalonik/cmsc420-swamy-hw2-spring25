@@ -78,8 +78,6 @@ Let $D(i)$ be the depth of a descend point at index $i$.
 4. Handle edge cases and maintain the landscape's integrity after operations.
 5. Ensure efficient implementation of all operations.
 
-**Important Note:** You may use standard library constructs from java.util in your solution, however your score will receive a 20% bonus if you implement without using any java.util classes (aside from java.util.Random which may be useful for certain data structures). You can either create a new class in the same file or create a new file and submit it alongside `TreasureValleyExplorer.java`. 
-
 ## :footprints: Example Expedition
 
 Consider the following initial landscape:
