@@ -78,7 +78,7 @@ Let $D(i)$ be the depth of a descend point at index $i$.
 4. Handle edge cases and maintain the landscape's integrity after operations.
 5. Ensure efficient implementation of all operations.
 
-**Important Note:**You may use standard library constructs from java.util in your solution.
+**Important Note:** You may use standard library constructs from java.util in your solution.
 
 ## :footprints: Example Expedition
 
