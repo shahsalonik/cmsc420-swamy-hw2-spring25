@@ -1,5 +1,7 @@
 import java.util.*;
 
+import javax.sound.midi.SysexMessage;
+
 /**
  * A convenient class that stores a pair of integers.
  * DO NOT MODIFY THIS CLASS.
@@ -46,36 +48,25 @@ class IntPair {
  * @author Saloni Shah
  */
 public class TreasureValleyExplorer {
-    
-    private class Node {
-        int height;
-        int value;
-        Node prev, next;
-    
-        public Node(int height, int value) {
+
+    private class Valley {
+        int height, depth, value;
+        Valley prev, next;
+        Valley landscapePrev, landscapeNext;
+
+        public Valley(int height, int value, int depth) {
             this.height = height;
+            this.depth = depth;
             this.value = value;
         }
     }
 
-    private class Valley extends Node {
-        int depth;
-        Valley valleyPrev, valleyNext;
-    
-        public Valley(int height, int value, int depth) {
-            super(height, value);
-            this.depth = depth;
-        }
-    }
-
-    // Create instance variables here.
-    private Node landscapeHead, landscapeTail; // linked list for the landscape
+    private Valley landscapeHead, landscapeTail; // linked list for the landscape
     private Valley valleyHead, valleyTail; // linked list for the valleys
     private int[] heights, values;
 
     // sorted data structure to hold valleys of the same depth
     private Map<Integer, TreeSet<Valley>> valleysAtDepth;
-
 
     /**
      * Constructor to initialize the TreasureValleyExplorer with the given heights
@@ -95,7 +86,7 @@ public class TreasureValleyExplorer {
         this.valleysAtDepth = new TreeMap<>();
         // initialize new landscape (DLL)
         for(int i = values.length - 1; i >= 0; i--) {
-            Node newNode = new Node(heights[i], values[i]);
+            Valley newNode = new Valley(heights[i], values[i], 0);
             insertAtLandscapeHead(newNode);
         }
         // initialize the second DLL with the valley tracking
@@ -109,27 +100,26 @@ public class TreasureValleyExplorer {
 
     /**
      * Insert a node at the landscape head.
-     * 
+     *
      * @param node the node to be inserted
      */
-    private void insertAtLandscapeHead(Node node) {
+    private void insertAtLandscapeHead(Valley node) {
         if(landscapeHead == null) {
             landscapeHead = landscapeTail = node;
         } else {
-            node.next = landscapeHead;
-            landscapeHead.prev = node;
+            node.landscapeNext = landscapeHead;
+            landscapeHead.landscapePrev = node;
             landscapeHead = node;
         }
     }
 
-        
+
     /**
      * Initialize the valley doubly-linked list.
      */
     private void initializeValleys() {
-        Node current = landscapeHead;
+        Valley current = landscapeHead;
         int prevDepth = 0;
-        boolean inDescent = false;
         int index = 0;
 
         while (current != null) {
@@ -144,31 +134,30 @@ public class TreasureValleyExplorer {
             // reset depth at peaks and track depth based on the formula given
             if (isPeak(current)) {
                 depth = 0;
-                inDescent = true;
-            } else if (inDescent && height < prevHeight) {
+                //inDescent = true;
+            } else if (height < prevHeight) {
                 depth = prevDepth + 1;
-            } else {
-                inDescent = false;
             }
 
             prevDepth = depth;
+            current.depth = depth;
 
             // store the valley
             if (isValley(current)) {
                 Valley valley = new Valley(height, values[index], depth);
                 insertValley(valley, depth);
-                valley.prev = current.prev;
-                valley.next = current.next;
+                valley.landscapePrev = current.landscapePrev;
+                valley.landscapeNext = current.landscapeNext;
             }
 
-            current = current.next;
+            current = current.landscapeNext;
             index++;
         }
-    }   
+    }
 
     /**
      * Inserts the valley into the valley doubly linked list.
-     * 
+     *
      * @param valley the valley to insert
      * @param depth the depth to insert at
      */
@@ -177,8 +166,9 @@ public class TreasureValleyExplorer {
         if (valleyHead == null) {
             valleyHead = valleyTail = valley;
         } else {
-            valleyTail.valleyNext = valley;
-            valley.valleyPrev = valleyTail;
+            valley.next = valleyTail.next;
+            valley.prev = valleyTail;
+            valleyTail.next = valley;
             valleyTail = valley;
         }
 
@@ -188,45 +178,45 @@ public class TreasureValleyExplorer {
 
     /**
      * Checks whether the given node is a valley using the conditions provided.
-     * 
+     *
      * @param node the node to check conditions for
      * @return true if it is a valley, false if not
      */
-    private boolean isValley(Node node) {
-        if (node.prev == null && node.next != null) {
-            return node.value < node.next.value;
+    private boolean isValley(Valley node) {
+        if (node.landscapePrev == null && node.landscapeNext != null) {
+            return node.height < node.landscapeNext.height;
         }
-        
-        if (node.next == null && node.prev != null) {
-            return node.value < node.prev.value;
+
+        if (node.landscapeNext == null && node.landscapePrev != null) {
+            return node.height < node.landscapePrev.height;
         }
-        
-        if (node.prev != null && node.next != null) {
-            return node.value < node.prev.value && node.value < node.next.value;
+
+        if (node.landscapePrev != null && node.landscapeNext != null) {
+            return node.height < node.landscapePrev.height && node.height < node.landscapeNext.height;
         }
-        
+
         return true;
     }
 
     /**
      * Checks whether the given node is a peak using the conditions provided.
-     * 
+     *
      * @param node the node to check conditions for
      * @return true if it is a peak, false if not
      */
-    private boolean isPeak(Node node) {
-        if (node.prev == null && node.next != null) {
-            return node.value > node.next.value;
+    private boolean isPeak(Valley node) {
+        if (node.landscapePrev == null && node.landscapeNext != null) {
+            return node.height > node.landscapeNext.height;
         }
-        
-        if (node.next == null && node.prev != null) {
-            return node.value > node.prev.value;
+
+        if (node.landscapeNext == null && node.landscapePrev != null) {
+            return node.height > node.landscapePrev.height;
         }
-        
-        if (node.prev != null && node.next != null) {
-            return node.value > node.prev.value && node.value > node.next.value;
+
+        if (node.landscapePrev != null && node.landscapeNext != null) {
+            return node.height > node.landscapePrev.height && node.height > node.landscapeNext.height;
         }
-        
+
         return true;
     }
 
@@ -247,7 +237,7 @@ public class TreasureValleyExplorer {
      * @return true if the landscape is empty, false otherwise.
      */
     public boolean isEmpty() {
-        return landscapeHead == null;
+        return landscapeHead == null && landscapeTail == null;
     }
 
     /**
@@ -261,6 +251,49 @@ public class TreasureValleyExplorer {
      * @return true if the insertion is successful, false otherwise
      */
     public boolean insertAtMostValuableValley(int height, int value, int depth) {
+        if(valleysAtDepth.get(depth).isEmpty()) {
+            return false;
+        }
+
+        Valley mostValuableValley = valleysAtDepth.get(depth).last();
+        // the node could be at that depth, but it may not be a valley point
+        if(!isValley(mostValuableValley)) {
+            return false;
+        }
+        // do the insertion
+        Valley newNode = new Valley(height, value, depth);
+        newNode.next = mostValuableValley;
+        newNode.prev = mostValuableValley.prev;
+
+        if(mostValuableValley.prev != null) {
+            mostValuableValley.prev.next = newNode;
+        } else {
+            insertAtLandscapeHead(newNode);
+        }
+
+        mostValuableValley.prev = newNode;
+
+        // check if this new node is a valley. if yes, increase depth (prev depth + 1) and add to valleysAtDepth
+        if(isValley(newNode)) {
+            if(newNode.prev != null) {
+                newNode.depth = newNode.prev.depth + 1;
+                addValleyToDepth(newNode.depth, newNode);
+            }
+        }
+
+        // 2 cases for insertion:
+        // 1. the node you insert has a height < the MVV
+            // if this case, then decrease the depth of the following nodes until we reach a peak
+            // do this by constantly checking if the following is a peak
+        // 2. the node you insert has a height > the MVV
+            // if this case, then increase the depth of the MVV until we reach a peak
+        if(height < mostValuableValley.height) {
+            while()
+        } else {
+
+        }
+
+
         return false;
     }
 
@@ -279,22 +312,28 @@ public class TreasureValleyExplorer {
         return false;
     }
 
-    
     /**
      * Removes the valley from both the valley doubly linked list and the sorted set for its depth.
      */
     private void removeValley(Valley valley) {
-        // Remove from valley doubly linked list
-        if (valley.valleyPrev != null) {
-            valley.valleyPrev.valleyNext = valley.valleyNext;
-        } else {
-            valleyHead = valley.valleyNext; // If it's the head
+        if(valley == null) {
+            return;
         }
 
-        if (valley.valleyNext != null) {
-            valley.valleyNext.valleyPrev = valley.valleyPrev;
-        } else {
-            valleyTail = valley.valleyPrev; // If it's the tail
+        if(valley == valleyHead) {
+            valleyHead = valley.next;
+        }
+
+        if(valley == valleyTail) {
+            valleyTail = valley.prev;
+        }
+
+        if(valley.prev != null) {
+            valley.prev.next = valley.next;
+        }
+
+        if(valley.next != null) {
+            valley.next.prev = valley.prev;
         }
 
         // Remove from sorted set
@@ -303,32 +342,31 @@ public class TreasureValleyExplorer {
         }
 
         // Disconnect the valley node completely
-        valley.valleyPrev = null;
-        valley.valleyNext = null;
+        valley.next = valley.prev = null;
     }
 
-    private void deleteLandscapeNode(Node node, Node next, Node prev) {
+    private void deleteLandscapeNode(Valley node) {
         if(node == null) {
             return;
         }
 
         if(node == landscapeHead) {
-            landscapeHead = next;
+            landscapeHead = node.landscapeNext;
         }
 
         if(node == landscapeTail) {
-            landscapeTail = prev;
+            landscapeTail = node.landscapePrev;
         }
 
-        if(node.prev != null) {
-            prev.next = next;
+        if(node.landscapePrev != null) {
+            node.landscapePrev.landscapeNext = node.landscapeNext;
         }
 
-        if(node.next != null) {
-            next.prev = prev;
+        if(node.landscapeNext != null) {
+            node.landscapeNext.landscapePrev = node.landscapePrev;
         }
 
-        next = prev = null;
+        node.landscapeNext = node.landscapePrev = null;
     }
 
     /**
@@ -342,38 +380,53 @@ public class TreasureValleyExplorer {
      */
     public IntPair removeMostValuableValley(int depth) {
         // first check if the depth even exists
-        if(valleysAtDepth.get(depth).isEmpty()) {
+        if(valleysAtDepth.get(depth) == null) {
             return null;
         }
 
-        // if it does, then get + remove the most valuable by doing pollLast()
         Valley mostValuableValley = valleysAtDepth.get(depth).last();
-        Node mVVNext = mostValuableValley.next;
-        Node mVVPrev = mostValuableValley.prev;
-        Valley nextValley = mostValuableValley.valleyNext;
+        // the node could be at that depth, but it may not be a valley point
+        if(!isValley(mostValuableValley)) {
+            return null;
+        }
+        Valley nextNode = mostValuableValley.landscapeNext;
 
-        // now we want to remove it from the valley DLL and the landscape
+        // does the removal here
+        deleteLandscapeNode(mostValuableValley);
         removeValley(mostValuableValley);
-        deleteLandscapeNode(mostValuableValley, mVVNext, mVVPrev);
 
-        // DEBUGGING
-        System.out.println("remove most valuable valley:");
+        System.out.println("after removal: ");
         printLandscape();
 
         // then we want to check the depths of the nodes following it
-        // 2 cases: 
+        // 2 cases:
         // 1. the node following it is now a peak (in which case depths don't need to be updated)
         // 2. the node following it is NOT a peak and now the depths of the following until the next peak need to be decreased by 1
-        if(nextValley != null && isPeak(nextValley)) {
+        if(nextNode != null && isPeak(nextNode)) {
             return new IntPair(mostValuableValley.height, mostValuableValley.value);
-        } else if (nextValley != null) {
-            for(Valley curr = nextValley; curr != null; curr = curr.valleyNext) {
-                curr.depth--;
-                addValleyToDepth(curr.depth, curr);
+        } else if(nextNode != null) {
+            while(nextNode != null && !isPeak(nextNode)) {
+                nextNode.depth++;
+                if(isValley(nextNode)) {
+                    TreeSet<Valley> oldSet = valleysAtDepth.get(nextNode.depth - 1);
+                    if (oldSet != null) {
+                        oldSet.remove(nextNode);
+                        // if the set becomes empty after removal, remove the key from the map
+                        if (oldSet.isEmpty()) {
+                            valleysAtDepth.remove(nextNode.depth - 1);
+                        }
+                    }
+                    addValleyToDepth(nextNode.depth, nextNode);
+                }
+                nextNode = nextNode.landscapeNext;
             }
         }
 
+        System.out.println("after relinking/updating: ");
+        printLandscape();
+
         return new IntPair(mostValuableValley.height, mostValuableValley.value);
+
     }
 
     /**
@@ -386,8 +439,53 @@ public class TreasureValleyExplorer {
      * @return null if no valleys of the specified depth exist
      */
     public IntPair removeLeastValuableValley(int depth) {
-        // TODO: Implement the removeLeastValuableValley method
-        return null;
+        // first check if the depth even exists
+        if(valleysAtDepth.get(depth) == null) {
+            return null;
+        }
+
+        Valley leastValuableValley = valleysAtDepth.get(depth).first();
+        // the node could be at that depth, but it may not be a valley point
+        if(!isValley(leastValuableValley)) {
+            return null;
+        }
+        Valley nextNode = leastValuableValley.landscapeNext;
+
+        // does the removal here
+        deleteLandscapeNode(leastValuableValley);
+        removeValley(leastValuableValley);
+
+        System.out.println("after removal: ");
+        printLandscape();
+
+        // then we want to check the depths of the nodes following it
+        // 2 cases:
+        // 1. the node following it is now a peak (in which case depths don't need to be updated)
+        // 2. the node following it is NOT a peak and now the depths of the following until the next peak need to be decreased by 1
+        if(nextNode != null && isPeak(nextNode)) {
+            return new IntPair(leastValuableValley.height, leastValuableValley.value);
+        } else if(nextNode != null) {
+            while(nextNode != null && !isPeak(nextNode)) {
+                nextNode.depth++;
+                if(isValley(nextNode)) {
+                    TreeSet<Valley> oldSet = valleysAtDepth.get(nextNode.depth - 1);
+                    if (oldSet != null) {
+                        oldSet.remove(nextNode);
+                        // if the set becomes empty after removal, remove the key from the map
+                        if (oldSet.isEmpty()) {
+                            valleysAtDepth.remove(nextNode.depth - 1);
+                        }
+                    }
+                    addValleyToDepth(nextNode.depth, nextNode);
+                }
+                nextNode = nextNode.landscapeNext;
+            }
+        }
+
+        System.out.println("after relinking/updating: ");
+        printLandscape();
+
+        return new IntPair(leastValuableValley.height, leastValuableValley.value);
     }
 
     /**
@@ -404,15 +502,15 @@ public class TreasureValleyExplorer {
         if (!valleysAtDepth.containsKey(depth)) {
             return null;
         }
-    
+
         TreeSet<Valley> valleysAtThisDepth = valleysAtDepth.get(depth);
-        
+
         if (valleysAtThisDepth.isEmpty()) {
             return null;
         }
-    
+
         Valley mostValuableValley = valleysAtThisDepth.last();
-    
+
         return new IntPair(mostValuableValley.height, mostValuableValley.value);
     }
 
@@ -430,15 +528,15 @@ public class TreasureValleyExplorer {
         if (!valleysAtDepth.containsKey(depth)) {
             return null;
         }
-    
+
         TreeSet<Valley> valleysAtThisDepth = valleysAtDepth.get(depth);
-        
+
         if (valleysAtThisDepth.isEmpty()) {
             return null;
         }
-    
+
         Valley leastValuableValley = valleysAtThisDepth.first();
-    
+
         return new IntPair(leastValuableValley.height, leastValuableValley.value);
     }
 
@@ -454,13 +552,13 @@ public class TreasureValleyExplorer {
     }
 
     private void printLandscape() {
-        for(Node curr = landscapeHead; curr != null; curr = curr.next) {
+        for(Valley curr = landscapeHead; curr != null; curr = curr.landscapeNext) {
             System.out.println("node height, value: " + curr.height + ", " + curr.value);
         }
 
         System.out.println("-----");
 
-        for(Node curr = valleyHead; curr != null; curr = curr.next) {
+        for(Valley curr = valleyHead; curr != null; curr = curr.next) {
             System.out.println("valley height, value: " + curr.height + ", " + curr.value);
         }
 
@@ -473,6 +571,3 @@ public class TreasureValleyExplorer {
         }
     }
 }
-
-// idea: maintain the valley linked list for an easier way to update their depths
-// if depth = 0 then remove it from that LL
