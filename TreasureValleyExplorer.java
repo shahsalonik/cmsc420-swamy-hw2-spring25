@@ -251,7 +251,7 @@ public class TreasureValleyExplorer {
      * @return true if the insertion is successful, false otherwise
      */
     public boolean insertAtMostValuableValley(int height, int value, int depth) {
-        if(valleysAtDepth.get(depth).isEmpty()) {
+        if(valleysAtDepth.get(depth) == null) {
             return false;
         }
 
@@ -262,22 +262,23 @@ public class TreasureValleyExplorer {
         }
         // do the insertion
         Valley newNode = new Valley(height, value, depth);
-        newNode.next = mostValuableValley;
-        newNode.prev = mostValuableValley.prev;
+        newNode.landscapeNext = mostValuableValley;
+        newNode.landscapePrev = mostValuableValley.landscapePrev;
 
-        if(mostValuableValley.prev != null) {
-            mostValuableValley.prev.next = newNode;
+        if(mostValuableValley.landscapePrev != null) {
+            mostValuableValley.landscapePrev.landscapeNext = newNode;
         } else {
             insertAtLandscapeHead(newNode);
         }
 
-        mostValuableValley.prev = newNode;
+        mostValuableValley.landscapePrev = newNode;
 
         // check if this new node is a valley. if yes, increase depth (prev depth + 1) and add to valleysAtDepth
         if(isValley(newNode)) {
-            if(newNode.prev != null) {
-                newNode.depth = newNode.prev.depth + 1;
+            if(newNode.landscapePrev != null) {
+                newNode.depth = newNode.landscapePrev.depth + 1;
                 addValleyToDepth(newNode.depth, newNode);
+                insertValley(newNode, newNode.depth);
             }
         }
 
@@ -286,15 +287,19 @@ public class TreasureValleyExplorer {
             // if this case, then decrease the depth of the following nodes until we reach a peak
             // do this by constantly checking if the following is a peak
         // 2. the node you insert has a height > the MVV
-            // if this case, then increase the depth of the MVV until we reach a peak
+            // if this case, then we don't really need to change anything
         if(height < mostValuableValley.height) {
-            while()
-        } else {
-
+            Valley curr = mostValuableValley;
+            while(!isPeak(curr)) {
+                curr.depth--;
+                curr = curr.landscapeNext;
+            }
         }
 
+        System.out.println("insertion at most valuable valley: ");
+        printLandscape();
 
-        return false;
+        return true;
     }
 
     /**
@@ -308,8 +313,55 @@ public class TreasureValleyExplorer {
      * @return true if the insertion is successful, false otherwise
      */
     public boolean insertAtLeastValuableValley(int height, int value, int depth) {
-        // TODO: Implement the insertAtLeastValuableValley method
-        return false;
+        if(valleysAtDepth.get(depth) == null) {
+            return false;
+        }
+
+        Valley leastValuableValley = valleysAtDepth.get(depth).first();
+        // the node could be at that depth, but it may not be a valley point
+        if(!isValley(leastValuableValley)) {
+            return false;
+        }
+        // do the insertion
+        Valley newNode = new Valley(height, value, depth);
+        newNode.landscapeNext = leastValuableValley;
+        newNode.landscapePrev = leastValuableValley.landscapePrev;
+
+        if(leastValuableValley.landscapePrev != null) {
+            leastValuableValley.landscapePrev.landscapeNext = newNode;
+        } else {
+            insertAtLandscapeHead(newNode);
+        }
+
+        leastValuableValley.landscapePrev = newNode;
+
+        // check if this new node is a valley. if yes, increase depth (prev depth + 1) and add to valleysAtDepth
+        if(isValley(newNode)) {
+            if(newNode.landscapePrev != null) {
+                newNode.depth = newNode.landscapePrev.depth + 1;
+                addValleyToDepth(newNode.depth, newNode);
+                insertValley(newNode, newNode.depth);
+            }
+        }
+
+        // 2 cases for insertion:
+        // 1. the node you insert has a height < the MVV
+            // if this case, then decrease the depth of the following nodes until we reach a peak
+            // do this by constantly checking if the following is a peak
+        // 2. the node you insert has a height > the MVV
+            // if this case, then we don't really need to change anything
+        if(height < leastValuableValley.height) {
+            Valley curr = leastValuableValley;
+            while(!isPeak(curr)) {
+                curr.depth--;
+                curr = curr.landscapeNext;
+            }
+        }
+
+        System.out.println("insertion at most valuable valley: ");
+        printLandscape();
+
+        return true;
     }
 
     /**
