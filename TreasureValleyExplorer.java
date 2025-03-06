@@ -91,11 +91,6 @@ public class TreasureValleyExplorer {
         }
         // initialize the second DLL with the valley tracking
         initializeValleys();
-
-        // DEBUGGING
-        System.out.println("initialization: ");
-        printLandscape();
-        System.out.println();
     }
 
     /**
@@ -295,10 +290,7 @@ public class TreasureValleyExplorer {
                 curr = curr.landscapeNext;
             }
         }
-
-        System.out.println("insertion at most valuable valley: ");
-        printLandscape();
-
+        
         return true;
     }
 
@@ -357,9 +349,6 @@ public class TreasureValleyExplorer {
                 curr = curr.landscapeNext;
             }
         }
-
-        System.out.println("insertion at most valuable valley: ");
-        printLandscape();
 
         return true;
     }
@@ -447,9 +436,6 @@ public class TreasureValleyExplorer {
         deleteLandscapeNode(mostValuableValley);
         removeValley(mostValuableValley);
 
-        System.out.println("after removal: ");
-        printLandscape();
-
         // then we want to check the depths of the nodes following it
         // 2 cases:
         // 1. the node following it is now a peak (in which case depths don't need to be updated)
@@ -473,9 +459,6 @@ public class TreasureValleyExplorer {
                 nextNode = nextNode.landscapeNext;
             }
         }
-
-        System.out.println("after relinking/updating: ");
-        printLandscape();
 
         return new IntPair(mostValuableValley.height, mostValuableValley.value);
 
@@ -507,9 +490,6 @@ public class TreasureValleyExplorer {
         deleteLandscapeNode(leastValuableValley);
         removeValley(leastValuableValley);
 
-        System.out.println("after removal: ");
-        printLandscape();
-
         // then we want to check the depths of the nodes following it
         // 2 cases:
         // 1. the node following it is now a peak (in which case depths don't need to be updated)
@@ -533,9 +513,6 @@ public class TreasureValleyExplorer {
                 nextNode = nextNode.landscapeNext;
             }
         }
-
-        System.out.println("after relinking/updating: ");
-        printLandscape();
 
         return new IntPair(leastValuableValley.height, leastValuableValley.value);
     }
