@@ -288,10 +288,17 @@ public class Evaluator {
     }
 
     public static void main(String[] args) {
-        TestCase testCase = new TestCase("/Users/saloni/Desktop/Everything/School/College/Sophomore Year/CMSC420/cmsc420-swamy-hw2-spring25/tests/tc_00_manual_small.txt");
-        System.out.println(testCase.toString());
-        boolean passed = new Evaluator().runTestCase(testCase);
-        if (passed)
-            System.out.println("Test passed!");
+        if (args.length < 1) {
+            System.out.println("No testcase file provided");
+            return;
+        } else {
+            for (String filepath : args) {
+                TestCase testCase = new TestCase(filepath);
+                System.out.println(testCase.toString());
+                boolean passed = new Evaluator().runTestCase(testCase);
+                if (passed)
+                    System.out.println("Test passed!");
+            }
+        }
     }
 }
