@@ -47,13 +47,9 @@ class IntPair {
  */
 public class TreasureValleyExplorer {
 
-    /**
-     * A Node class for each of the elements of the landscape.
-     * 
-     * Stores their heights and values.
-     */
     private class Node {
         int height, value;
+        Node prev, next;
 
         public Node(int height, int value) {
             this.height = height;
@@ -61,26 +57,21 @@ public class TreasureValleyExplorer {
         }
     }
 
-    /**
-     * A Valley class to store data related to the valleys.
-     * 
-     * Stores their heights and values along with their depths and what indices they are located at.
-     */
     private class Valley {
-        int height, value, depth, index;
+        int depth;
+        Node node;
+        Valley valleyPrev, valleyNext;
 
-        public Valley(int height, int value, int depth, int index) {
-            this.height = height;
-            this.value = value;
+        public Valley(int depth, Node node) {
             this.depth = depth;
-            this.index = index;
+            this.node = node;
         }
     }
 
-    private List<Node> landscape;
-    // different maps to store the most and least valuable valleys
-    private Map<Integer, TreeMap<Integer, Valley>> mostValuableValleyMap;
-    private Map<Integer, TreeMap<Integer, Valley>> leastValuableValleyMap;
+    private Node head, tail;
+    private Valley valleyHead, valleyTail;
+    private Map<Integer, TreeSet<Valley>> valleysAtDepth;
+    private int[] heights, values;
 
     /**
      * Constructor to initialize the TreasureValleyExplorer with the given heights
@@ -93,42 +84,97 @@ public class TreasureValleyExplorer {
      *                of points in the landscape.
      */
     public TreasureValleyExplorer(int[] heights, int[] values) {
-        landscape = new ArrayList<>();
-        mostValuableValleyMap = new HashMap<>();
-        leastValuableValleyMap = new HashMap<>();
-        // initialize landscape
-        for (int i = 0; i < heights.length; i++) {
-            landscape.add(new Node(heights[i], values[i]));
+        this.heights = heights;
+        this.values = values;
+        valleysAtDepth = new TreeMap<>();
+        // initialize the landscape
+        for(int i = heights.length - 1; i >= 0; i--) {
+            Node newNode = new Node(heights[i], values[i]);
+            insertAtHead(newNode);
         }
-        // go through and compute the valleys
+        // initialize the valleys
         initializeValleys();
+    }
 
+    /**
+     * Insert a node at the head.
+     *
+     * @param node the node to be inserted
+     */
+    private void insertAtHead(Node node) {
+        if(head == null) {
+            head = tail = node;
+        } else {
+            node.next = head;
+            head.prev = node;
+            head = node;
+        }
     }
 
     private void initializeValleys() {
-        // clear out the valley maps so that we can start fresh
-        mostValuableValleyMap.clear();
-        leastValuableValleyMap.clear();
+        Node current = head;
+        int prevDepth = 0;
+        int index = 0;
 
-        // compute the depths of each node using the depth formula we got
-        int depth = 0;
-        for (int i = 0; i < landscape.size(); i++) {
-            Node curr = landscape.get(i);
-            // increase depth if we're on a descend sequence, otherwise reset to 0
-            if (i > 0 && curr.height < landscape.get(i - 1).height) {
-                depth++;
-            } else {
+        while (current != null) {
+            int depth = 0;
+
+            int height = heights[index];
+            int prevHeight = Integer.MIN_VALUE;
+            if (index > 0) {
+                prevHeight = heights[index - 1];
+            }
+
+            // reset depth at peaks and track depth based on the formula given
+            if (isPeak(current)) {
                 depth = 0;
+                //inDescent = true;
+            } else if (height < prevHeight) {
+                depth = prevDepth + 1;
             }
 
-            // valley check + add to valley maps
-            if (isValley(i, curr)) {
-                Valley valley = new Valley(curr.height, curr.value, depth, i);
-                mostValuableValleyMap.computeIfAbsent(depth, v -> new TreeMap<>()).put(valley.value, valley);
-                leastValuableValleyMap.computeIfAbsent(depth, v -> new TreeMap<>()).put(valley.value, valley);
+            prevDepth = depth;
+
+            // store the valley
+            if (isValley(current)) {
+                Valley valley = new Valley(depth, current);
+                insertValley(valley, depth);
             }
+
+            current = current.next;
+            index++;
+        }
+    }
+
+    /**
+     * Inserts the valley into the valley doubly linked list.
+     *
+     * @param valley the valley to insert
+     * @param depth the depth to insert at
+     */
+    private void insertValley(Valley valley, int depth) {
+        // Insert into the valley doubly linked list
+        if (valleyHead == null) {
+            valleyHead = valleyTail = valley;
+        } else {
+            valley.valleyNext = valleyTail.valleyNext;
+            valley.valleyPrev = valleyTail;
+            valleyTail.valleyNext = valley;
+            valleyTail = valley;
         }
 
+        // Insert into the sorted set for its depth
+        addValleyToDepth(depth, valley);
+    }
+
+    /**
+     * Adds a valley to the sorted set for its particular depth.
+     * @param depth the depth to insert the valley at
+     * @param valley the valley to insert
+     */
+    private void addValleyToDepth(int depth, Valley valley) {
+        valleysAtDepth.putIfAbsent(depth, new TreeSet<>(Comparator.comparingInt(v -> v.node.value)));
+        valleysAtDepth.get(depth).add(valley);
     }
 
     /**
@@ -137,8 +183,42 @@ public class TreasureValleyExplorer {
      * @param node the node to check conditions for
      * @return true if it is a valley, false if not
      */
-    private boolean isValley(int index, Node node) {
-        return (index == 0 || node.height < landscape.get(index - 1).height) && (index == landscape.size() - 1 || node.height < landscape.get(index + 1).height);
+    private boolean isValley(Node node) {
+        if (node.prev == null && node.next != null) {
+            return node.height < node.next.height;
+        }
+
+        if (node.next == null && node.prev != null) {
+            return node.height < node.prev.height;
+        }
+
+        if (node.prev != null && node.next != null) {
+            return node.height < node.prev.height && node.height < node.next.height;
+        }
+
+        return true;
+    }
+
+    /**
+     * Checks whether the given node is a peak using the conditions provided.
+     *
+     * @param node the node to check conditions for
+     * @return true if it is a peak, false if not
+     */
+    private boolean isPeak(Node node) {
+        if (node.prev == null && node.next != null) {
+            return node.height > node.next.height;
+        }
+
+        if (node.next == null && node.prev != null) {
+            return node.height > node.prev.height;
+        }
+
+        if (node.prev != null && node.next != null) {
+            return node.height > node.prev.height && node.height > node.next.height;
+        }
+
+        return true;
     }
 
     /**
@@ -148,7 +228,7 @@ public class TreasureValleyExplorer {
      * @return true if the landscape is empty, false otherwise.
      */
     public boolean isEmpty() {
-        return landscape.isEmpty();
+        return head == null;
     }
 
     /**
@@ -162,18 +242,87 @@ public class TreasureValleyExplorer {
      * @return true if the insertion is successful, false otherwise
      */
     public boolean insertAtMostValuableValley(int height, int value, int depth) {
-        TreeMap<Integer, Valley> currDepthMap = mostValuableValleyMap.get(depth);
-        // if no valleys at specified depth, return null
-        if (currDepthMap == null || currDepthMap.isEmpty()) {
+        TreeSet<Valley> valleys = valleysAtDepth.get(depth);
+        // need to check if that depth even exists
+        if (valleys == null || valleys.isEmpty()) {
             return false;
         }
-
-        // find where the most valuable valley is and insert at the index before that one
-        Valley mostValuableValley = currDepthMap.lastEntry().getValue();
-        int index = mostValuableValley.index;
         Node newNode = new Node(height, value);
-        landscape.add(index, newNode);
-        initializeValleys();
+        Valley mostValuableValley = valleys.last(); // returns the most valuable valley @ that depth
+        // do the insertion
+        newNode.next = mostValuableValley.node;
+        newNode.prev = mostValuableValley.node.prev;
+
+        if(mostValuableValley.node.prev != null) {
+            mostValuableValley.node.prev.next = newNode;
+        } else {
+            insertAtHead(newNode);
+        }
+
+        mostValuableValley.node.prev = newNode;
+
+        // check various conditions on the node
+        // condition 1: is the node we're inserting a valley?
+        if(isValley(newNode)) {
+            // remove and replace the LVV in the valley list with the node
+            Valley newNodeValley = new Valley(depth, newNode);
+            removeAndReplace(mostValuableValley, newNodeValley);
+            // remove the prev valley from the map
+            TreeSet<Valley> oldSet = valleysAtDepth.get(mostValuableValley.depth);
+            if (oldSet != null) {
+                oldSet.remove(mostValuableValley);
+                // if the set becomes empty after removal, remove the key from the map
+                if (oldSet.isEmpty()) {
+                    valleysAtDepth.remove(mostValuableValley.depth);
+                }
+            }
+            // add this new node to that set
+            addValleyToDepth(depth, newNodeValley);
+        }
+        // condition 2
+        // is the node that we're inserting a peak?
+        else if(isPeak(newNode)) {
+            // condition 2a: is the node before this one now a valley?
+            // if yes, then the depth of the current node becomes 0
+            // and the prev node needs to be added to the valley stuff
+            if(newNode.prev != null && isValley(newNode.prev)) {
+                // need a check for if the prev node is the head:
+                Valley prevNodeValley = new Valley(mostValuableValley.depth - 1, newNode.prev);
+                addValleyToDepth(prevNodeValley.depth, prevNodeValley);
+                insertValley(prevNodeValley, prevNodeValley.depth);
+            }
+            // most valuable valley's depth will ALWAYS "reset" to 1
+            if(mostValuableValley.depth != 1) {
+                TreeSet<Valley> oldSet = valleysAtDepth.get(mostValuableValley.depth);
+                if (oldSet != null) {
+                    oldSet.remove(mostValuableValley);
+                    // if the set becomes empty after removal, remove the key from the map
+                    if (oldSet.isEmpty()) {
+                        valleysAtDepth.remove(mostValuableValley.depth);
+                    }
+                }
+                // always the case because it will become the first downward node in a descend point
+                mostValuableValley.depth = 1;
+                addValleyToDepth(mostValuableValley.depth, mostValuableValley);
+            }
+        }
+        // it's just another point on the descent
+        else if(!isValley(newNode) && !isPeak(newNode)) {
+            // remove the LVV from the valley map + update it
+            TreeSet<Valley> oldSet = valleysAtDepth.get(mostValuableValley.depth);
+            if (oldSet != null) {
+                oldSet.remove(mostValuableValley);
+                // if the set becomes empty after removal, remove the key from the map
+                if (oldSet.isEmpty()) {
+                    valleysAtDepth.remove(mostValuableValley.depth);
+                }
+            }
+            // increase the depth of the LVV
+            mostValuableValley.depth++;
+            // add this new node to that set
+            addValleyToDepth(mostValuableValley.depth, mostValuableValley);
+        }
+
         return true;
     }
 
@@ -188,19 +337,111 @@ public class TreasureValleyExplorer {
      * @return true if the insertion is successful, false otherwise
      */
     public boolean insertAtLeastValuableValley(int height, int value, int depth) {
-        TreeMap<Integer, Valley> currDepthMap = leastValuableValleyMap.get(depth);
-        // if no valleys at specified depth, return null
-        if (currDepthMap == null || currDepthMap.isEmpty()) {
+        TreeSet<Valley> valleys = valleysAtDepth.get(depth);
+        // need to check if that depth even exists
+        if (valleys == null || valleys.isEmpty()) {
             return false;
         }
-
-        // find where the least valuable valley is and insert at the index before that one
-        Valley leastValuableValley = currDepthMap.firstEntry().getValue();
-        int index = leastValuableValley.index;
         Node newNode = new Node(height, value);
-        landscape.add(index, newNode);
-        initializeValleys();
+        Valley leastValuableValley = valleys.first(); // returns the least valuable valley @ that depth
+        // do the insertion
+        newNode.next = leastValuableValley.node;
+        newNode.prev = leastValuableValley.node.prev;
+
+        if(leastValuableValley.node.prev != null) {
+            leastValuableValley.node.prev.next = newNode;
+        } else {
+            insertAtHead(newNode);
+        }
+
+        leastValuableValley.node.prev = newNode;
+
+        // check various conditions on the node
+        // condition 1: is the node we're inserting a valley?
+        if(isValley(newNode)) {
+            // remove and replace the LVV in the valley list with the node
+            Valley newNodeValley = new Valley(depth, newNode);
+            removeAndReplace(leastValuableValley, newNodeValley);
+            // remove the prev valley from the map
+            TreeSet<Valley> oldSet = valleysAtDepth.get(leastValuableValley.depth);
+            if (oldSet != null) {
+                oldSet.remove(leastValuableValley);
+                // if the set becomes empty after removal, remove the key from the map
+                if (oldSet.isEmpty()) {
+                    valleysAtDepth.remove(leastValuableValley.depth);
+                }
+            }
+            // add this new node to that set
+            addValleyToDepth(depth, newNodeValley);
+        }
+        // condition 2
+        // is the node that we're inserting a peak?
+        else if(isPeak(newNode)) {
+            // condition 2a: is the node before this one now a valley?
+            // if yes, then the depth of the current node becomes 0
+            // and the prev node needs to be added to the valley stuff
+            if(newNode.prev != null && isValley(newNode.prev)) {
+                // need a check for if the prev node is the head:
+                Valley prevNodeValley = new Valley(leastValuableValley.depth - 1, newNode.prev);
+                addValleyToDepth(prevNodeValley.depth, prevNodeValley);
+                insertValley(prevNodeValley, prevNodeValley.depth);
+            }
+            // least valuable valley's depth will ALWAYS "reset" to 1
+            if(leastValuableValley.depth != 1) {
+                TreeSet<Valley> oldSet = valleysAtDepth.get(leastValuableValley.depth);
+                if (oldSet != null) {
+                    oldSet.remove(leastValuableValley);
+                    // if the set becomes empty after removal, remove the key from the map
+                    if (oldSet.isEmpty()) {
+                        valleysAtDepth.remove(leastValuableValley.depth);
+                    }
+                }
+                // always the case because it will become the first downward node in a descend point
+                leastValuableValley.depth = 1;
+                addValleyToDepth(leastValuableValley.depth, leastValuableValley);
+            }
+        }
+        // it's just another point on the descent
+        else if(!isValley(newNode) && !isPeak(newNode)) {
+            // remove the LVV from the valley map + update it
+            TreeSet<Valley> oldSet = valleysAtDepth.get(leastValuableValley.depth);
+            if (oldSet != null) {
+                oldSet.remove(leastValuableValley);
+                // if the set becomes empty after removal, remove the key from the map
+                if (oldSet.isEmpty()) {
+                    valleysAtDepth.remove(leastValuableValley.depth);
+                }
+            }
+            // increase the depth of the LVV
+            leastValuableValley.depth++;
+            // add this new node to that set
+            addValleyToDepth(leastValuableValley.depth, leastValuableValley);
+        }
+
+
         return true;
+    }
+
+    public void removeAndReplace(Valley nodeToRemove, Valley newNode) {
+        if (nodeToRemove == null) {
+            return;
+        }
+
+        if (nodeToRemove.valleyPrev == null) {
+            valleyHead = newNode;
+        } else {
+            nodeToRemove.valleyPrev.valleyNext = newNode;
+        }
+
+        if (nodeToRemove.valleyNext != null) {
+            nodeToRemove.valleyNext.valleyPrev = newNode;
+        }
+
+        newNode.valleyPrev = nodeToRemove.valleyPrev;
+        newNode.valleyNext = nodeToRemove.valleyNext;
+
+        nodeToRemove.valleyPrev = null;
+        nodeToRemove.valleyNext = null;
     }
 
     /**
@@ -213,21 +454,64 @@ public class TreasureValleyExplorer {
      * @return null if no valleys of the specified depth exist
      */
     public IntPair removeMostValuableValley(int depth) {
-        TreeMap<Integer, Valley> currDepthMap = mostValuableValleyMap.get(depth);
-        // if no valleys at specified depth, return null
-        if (currDepthMap == null || currDepthMap.isEmpty()) {
+        TreeSet<Valley> valleys = valleysAtDepth.get(depth);
+        // need to check if that depth even exists
+        if (valleys == null || valleys.isEmpty()) {
             return null;
         }
+        Valley mostValuableValley = valleys.last(); // returns the most valuable valley @ that depth
+        int height = mostValuableValley.node.height;
+        int value = mostValuableValley.node.value;
+        Node prevNode = mostValuableValley.node.prev;
+        Node nextNode = mostValuableValley.node.next;
 
-        // otherwise, remove the valley from the map and the landscape
-        Valley mostValuableValley = currDepthMap.pollLastEntry().getValue();
-        int indexToRemove = mostValuableValley.index;
+        // remove from landscape DLL
+        removeFromLandscapeDLL(mostValuableValley.node);
+        // remove from valley DLL
+        removeFromValleyDLL(mostValuableValley);
 
-        Node removed = landscape.remove(indexToRemove);
-        // need to reinitialize the valleys (is this too much computational time??)
-        // come back to this if it doesn't pass the tests lol
-        initializeValleys();
-        return new IntPair(removed.height, removed.value);
+        // if the next node isn't a peak then the depth of the following valley will increase (i think ??)
+        if(mostValuableValley.valleyNext != null && !isPeak(nextNode)) {
+            mostValuableValley.valleyNext.depth++;
+            TreeSet<Valley> oldSet = valleysAtDepth.get(mostValuableValley.depth);
+            if (oldSet != null) {
+                oldSet.remove(mostValuableValley);
+                // if the set becomes empty after removal, remove the key from the map
+                if (oldSet.isEmpty()) {
+                    valleysAtDepth.remove(mostValuableValley.depth);
+                }
+            }
+            addValleyToDepth(mostValuableValley.valleyNext.depth, mostValuableValley.valleyNext);
+        }
+
+        // check if the previous node is a valley
+        //      if yes: replace the LVV in the DLL with this one
+        //      remove the MVV from valleysAtDepth and add in the prev
+        //
+        // check if the next node is a valley
+        //      if yes: replace the MVV in the DLL with this one
+        //      remove the MVV from valleysAtDepth and add in the next
+        // otherwise, worst case recompute valleys :(
+        if(prevNode != null && isValley(prevNode)) {
+            Valley newValley = new Valley(depth, prevNode);
+            removeAndReplace(mostValuableValley, newValley);
+            addValleyToDepth(newValley.depth, newValley);
+        } else if(nextNode != null && isValley(nextNode)) {
+            Valley newValley = new Valley(depth, nextNode);
+            removeAndReplace(mostValuableValley, newValley);
+            addValleyToDepth(newValley.depth, newValley);
+        } else {
+            recomputeValleys(); // i lowk dk if this will work asymptotically but we shall try n see
+        }
+        TreeSet<Valley> oldSet = valleysAtDepth.get(mostValuableValley.depth);
+        if (oldSet != null) {
+            oldSet.remove(mostValuableValley);
+            // if the set becomes empty after removal, remove the key from the map
+            if (oldSet.isEmpty()) {
+                valleysAtDepth.remove(mostValuableValley.depth);
+            }
+        }
+        return new IntPair(height, value);
     }
 
     /**
@@ -240,21 +524,130 @@ public class TreasureValleyExplorer {
      * @return null if no valleys of the specified depth exist
      */
     public IntPair removeLeastValuableValley(int depth) {
-        TreeMap<Integer, Valley> currDepthMap = leastValuableValleyMap.get(depth);
-        // if no valleys at specified depth, return null
-        if (currDepthMap == null || currDepthMap.isEmpty()) {
+        TreeSet<Valley> valleys = valleysAtDepth.get(depth);
+        // need to check if that depth even exists
+        if (valleys == null || valleys.isEmpty()) {
             return null;
         }
+        Valley leastValuableValley = valleys.first(); // returns the least valuable valley @ that depth
+        int height = leastValuableValley.node.height;
+        int value = leastValuableValley.node.value;
+        Node prevNode = leastValuableValley.node.prev;
+        Node nextNode = leastValuableValley.node.next;
 
-        // otherwise, remove the valley from the map and the landscape
-        Valley leastValuableValley = currDepthMap.pollFirstEntry().getValue();
-        int indexToRemove = leastValuableValley.index;
+        // remove from landscape DLL
+        removeFromLandscapeDLL(leastValuableValley.node);
 
-        Node removed = landscape.remove(indexToRemove);
-        // need to reinitialize the valleys (is this too much computational time??)
-        // come back to this if it doesn't pass the tests lol
-        initializeValleys();
-        return new IntPair(removed.height, removed.value);
+        // if the next node isn't a peak then the depth of the following valley will increase (i think ??)
+        if(leastValuableValley.valleyNext != null && !isPeak(nextNode)) {
+            leastValuableValley.valleyNext.depth++;
+            TreeSet<Valley> oldSet = valleysAtDepth.get(leastValuableValley.depth);
+            if (oldSet != null) {
+                oldSet.remove(leastValuableValley);
+                // if the set becomes empty after removal, remove the key from the map
+                if (oldSet.isEmpty()) {
+                    valleysAtDepth.remove(leastValuableValley.depth);
+                }
+            }
+            addValleyToDepth(leastValuableValley.valleyNext.depth, leastValuableValley.valleyNext);
+        }
+
+        // check if the previous node is a valley
+        //      if yes: replace the LVV in the DLL with this one
+        //      remove the LVV from valleysAtDepth and add in the prev
+        //
+        // check if the next node is a valley
+        //      if yes: replace the LVV in the DLL with this one
+        //      remove the LVV from valleysAtDepth and add in the next
+        // otherwise, worst case recompute valleys :(
+        if(prevNode != null && isValley(prevNode)) {
+            Valley newValley = new Valley(depth, prevNode);
+            removeAndReplace(leastValuableValley, newValley);
+            addValleyToDepth(newValley.depth, newValley);
+        } else if(nextNode != null && isValley(nextNode)) {
+            Valley newValley = new Valley(depth, nextNode);
+            removeAndReplace(leastValuableValley, newValley);
+            addValleyToDepth(newValley.depth, newValley);
+        } else {
+            // remove from valley DLL
+            removeFromValleyDLL(leastValuableValley);
+            recomputeValleys(); // i lowk dk if this will work asymptotically but we shall try n see
+        }
+
+        TreeSet<Valley> oldSet = valleysAtDepth.get(leastValuableValley.depth);
+        if (oldSet != null) {
+            oldSet.remove(leastValuableValley);
+            // if the set becomes empty after removal, remove the key from the map
+            if (oldSet.isEmpty()) {
+                valleysAtDepth.remove(leastValuableValley.depth);
+            }
+        }
+        // issue is somewhere in the remove and replace method check that tmrw morning.
+        return new IntPair(height, value);
+    }
+
+    private void recomputeValleys() {
+        Node curr = head;
+        valleyHead = valleyTail = null;
+        valleysAtDepth.clear();
+        int prevDepth = 0;
+        while (curr != null) {
+            int depth = 0;
+
+            if(isPeak(curr)) {
+                depth = 0;
+            } else {
+                depth = prevDepth + 1;
+            }
+
+            prevDepth = depth;
+
+            if(isValley(curr)) {
+                Valley valley = new Valley(depth, curr);
+                TreeSet<Valley> oldSet = valleysAtDepth.get(valley.depth - 1);
+                if (oldSet != null) {
+                    oldSet.remove(valley);
+                    // if the set becomes empty after removal, remove the key from the map
+                    if (oldSet.isEmpty()) {
+                        valleysAtDepth.remove(valley.depth);
+                    }
+                }
+                insertValley(valley, depth);
+            }
+            curr = curr.next;
+        }
+    }
+
+    private void removeFromLandscapeDLL(Node node) {
+        if (node == head) {
+            head = node.next;
+        } else if (node == tail) {
+            tail = node.prev;
+        } else {
+            node.prev.next = node.next;
+            node.next.prev = node.prev;
+        }
+
+        node.prev = null;
+        node.next = null;
+    }
+
+    private void removeFromValleyDLL(Valley valley) {
+        if (valley == valleyHead) {
+            valleyHead = valleyHead.valleyNext;
+        }
+        if (valley == valleyTail) {
+            valleyTail = valley.valleyPrev;
+        }
+        if(valley.valleyPrev != null) {
+            valley.valleyPrev.valleyNext = valley.valleyNext;
+        }
+        if(valley.valleyNext != null) {
+            valley.valleyNext.valleyPrev = valley.valleyPrev;
+        }
+
+        valley.valleyPrev = null;
+        valley.valleyNext = null;
     }
 
     /**
@@ -268,13 +661,13 @@ public class TreasureValleyExplorer {
      * @return null if no valleys of the specified depth exist
      */
     public IntPair getMostValuableValley(int depth) {
-        TreeMap<Integer, Valley> currDepthMap = mostValuableValleyMap.get(depth);
-        if (currDepthMap == null) {
+        TreeSet<Valley> valleys = valleysAtDepth.get(depth);
+        // need to check if that depth even exists
+        if (valleys == null || valleys.isEmpty()) {
             return null;
         }
-        // get the valley with the greatest value at that depth
-        Valley mostValuableValley = currDepthMap.lastEntry().getValue();
-        return new IntPair(mostValuableValley.height, mostValuableValley.value);
+        Valley mostValuableValley = valleys.last(); // returns the most valuable valley @ that depth
+        return new IntPair(mostValuableValley.node.height, mostValuableValley.node.value);
     }
 
     /**
@@ -288,13 +681,13 @@ public class TreasureValleyExplorer {
      * @return null if no valleys of the specified depth exist
      */
     public IntPair getLeastValuableValley(int depth) {
-        TreeMap<Integer, Valley> currDepthMap = leastValuableValleyMap.get(depth);
-        if (currDepthMap == null) {
+        TreeSet<Valley> valleys = valleysAtDepth.get(depth);
+        // need to check if that depth even exists
+        if (valleys == null || valleys.isEmpty()) {
             return null;
         }
-        // get the valley with the lowest value at that depth
-        Valley leastValuableValley = currDepthMap.firstEntry().getValue();
-        return new IntPair(leastValuableValley.height, leastValuableValley.value);
+        Valley leastValuableValley = valleys.first(); // returns the least valuable valley @ that depth
+        return new IntPair(leastValuableValley.node.height, leastValuableValley.node.value);
     }
 
     /**
@@ -305,10 +698,6 @@ public class TreasureValleyExplorer {
      * @return The number of valleys of the specified depth
      */
     public int getValleyCount(int depth) {
-        TreeMap<Integer, Valley> map = mostValuableValleyMap.get(depth);
-        if(map == null) {
-            return 0;
-        }
-        return map.size();
+        return valleysAtDepth.get(depth).size();
     }
 }
