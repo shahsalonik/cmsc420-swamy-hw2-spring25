@@ -457,16 +457,46 @@ public class TreasureValleyExplorer {
         // 1. the previous node becomes a valley - BEST CASE
         //      a. decrease the depth by 1
         //      b. insert the prev node into the valley DLL
-        // 2. the prev node does NOT become a valley - WORST CASE
-        //      a. recompute the valleys starting at the next node
-        if(prevNode != null && isValley(prevNode)) {
+        // 2. the prev node is a peak
+        //      a. make sure that there are still valleys left (this is jank)
+        //      b. traverse until you hit the next peak, decreasing depth by 1
+        // 3. the next node becomes a valley
+        //      a. depth stays the same
+        //      b. insert the next node into the valley stuff
+        // 4. the next node is a peak
+        //      a. no change.
+        if (prevNode != null && isValley(prevNode)) {
             depth--;
             Valley newNodeValley = new Valley(depth, prevNode);
             addValleyToDepth(depth, newNodeValley);
             insertValley(newNodeValley, depth);
-        } else {
-            recomputeValleys(nextNode);
+        } else if (prevNode != null && isPeak(prevNode)) {
+            Node curr = nextNode;
+            int newDepth = 1;
+            while (curr != null && valleyHead != null && !isPeak(curr)) {
+                if (isValley(curr)) {
+                    Valley currValley = new Valley(newDepth - 1, curr);
+                    Valley newValley = new Valley(newDepth, curr);
+                    TreeSet<Valley> oldSet = valleysAtDepth.get(currValley.depth);
+                    if (oldSet != null) {
+                        oldSet.remove(currValley);
+                        // if the set becomes empty after removal, remove the key from the map
+                        if (oldSet.isEmpty()) {
+                            valleysAtDepth.remove(currValley.depth);
+                        }
+                    }
+                    addValleyToDepth(newDepth, newValley);
+                    insertValley(newValley, newDepth);
+                }
+                curr = curr.next;
+                newDepth++;
+            }
+        } else if (nextNode != null && isValley(nextNode)) {
+            Valley nextValley = new Valley(depth, nextNode);
+            addValleyToDepth(depth, nextValley);
+            insertValley(nextValley, depth);
         }
+
         return new IntPair(height, value);
     }
 
@@ -497,7 +527,7 @@ public class TreasureValleyExplorer {
         removeFromValleyDLL(leastValuableValley);
         // remove the node from the treemap
         valleys.remove(leastValuableValley);
-        if(valleys.isEmpty()) {
+        if (valleys.isEmpty()) {
             valleysAtDepth.remove(leastValuableValley.depth);
         }
 
@@ -505,48 +535,47 @@ public class TreasureValleyExplorer {
         // 1. the previous node becomes a valley - BEST CASE
         //      a. decrease the depth by 1
         //      b. insert the prev node into the valley DLL
-        // 2. the prev node does NOT become a valley - WORST CASE
-        //      a. recompute the valleys starting at the next node
-        if(prevNode != null && isValley(prevNode)) {
+        // 2. the prev node is a peak
+        //      a. make sure that there are still valleys left (this is jank)
+        //      b. traverse until you hit the next peak, decreasing depth by 1
+        // 3. the next node becomes a valley
+        //      a. depth stays the same
+        //      b. insert the next node into the valley stuff
+        // 4. the next node is a peak
+        //      a. no change.
+        if (prevNode != null && isValley(prevNode)) {
             depth--;
             Valley newNodeValley = new Valley(depth, prevNode);
             addValleyToDepth(depth, newNodeValley);
             insertValley(newNodeValley, depth);
-        } else {
-            recomputeValleys(nextNode);
+        } else if (prevNode != null && isPeak(prevNode)) {
+            Node curr = nextNode;
+            int newDepth = 1;
+            while (curr != null && valleyHead != null && !isPeak(curr)) {
+                if (isValley(curr)) {
+                    Valley currValley = new Valley(newDepth - 1, curr);
+                    Valley newValley = new Valley(newDepth, curr);
+                    TreeSet<Valley> oldSet = valleysAtDepth.get(currValley.depth);
+                    if (oldSet != null) {
+                        oldSet.remove(currValley);
+                        // if the set becomes empty after removal, remove the key from the map
+                        if (oldSet.isEmpty()) {
+                            valleysAtDepth.remove(currValley.depth);
+                        }
+                    }
+                    addValleyToDepth(newDepth, newValley);
+                    insertValley(newValley, newDepth);
+                }
+                curr = curr.next;
+                newDepth++;
+            }
+        } else if (nextNode != null && isValley(nextNode)) {
+            Valley nextValley = new Valley(depth, nextNode);
+            addValleyToDepth(depth, nextValley);
+            insertValley(nextValley, depth);
         }
 
         return new IntPair(height, value);
-    }
-
-    private void recomputeValleys(Node startingNode) {
-        Node curr = startingNode;
-        int prevDepth = 0;
-        while (curr != null) {
-            int depth = 0;
-
-            if(isPeak(curr)) {
-                depth = 0;
-            } else {
-                depth = prevDepth + 1;
-            }
-
-            prevDepth = depth;
-
-            if(isValley(curr)) {
-                Valley valley = new Valley(depth, curr);
-                TreeSet<Valley> oldSet = valleysAtDepth.get(valley.depth - 1);
-                if (oldSet != null) {
-                    oldSet.remove(valley);
-                    // if the set becomes empty after removal, remove the key from the map
-                    if (oldSet.isEmpty()) {
-                        valleysAtDepth.remove(valley.depth - 1);
-                    }
-                }
-                insertValley(valley, depth);
-            }
-            curr = curr.next;
-        }
     }
 
     private void removeFromLandscapeDLL(Node node) {
