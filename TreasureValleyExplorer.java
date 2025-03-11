@@ -457,25 +457,29 @@ public class TreasureValleyExplorer {
         // 1. the previous node becomes a valley - BEST CASE
         //      a. decrease the depth by 1
         //      b. insert the prev node into the valley DLL
-        // 2. the prev node is a peak
-        //      a. make sure that there are still valleys left (this is jank)
-        //      b. traverse until you hit the next peak, decreasing depth by 1
-        // 3. the next node becomes a valley
+        // 2. the next node becomes a valley - BEST CASE x2
         //      a. depth stays the same
-        //      b. insert the next node into the valley stuff
-        // 4. the next node is a peak
-        //      a. no change.
+        //      b. do the inserts
+        // 3. neither the prev nor the next are valleys or peaks (either ascend or descend points) - WORST CASE
+        //      a. CASE 1: descend points -> traverse until you hit the next peak (prev node height > next node height)
+        //          i. increase the depth of the valley that is encountered until the height of the next node > curr
+        //      b. CASE 2: ascend points -> no change
         if (prevNode != null && isValley(prevNode)) {
             depth--;
             Valley newNodeValley = new Valley(depth, prevNode);
             addValleyToDepth(depth, newNodeValley);
             insertValley(newNodeValley, depth);
-        } else if (prevNode != null && isPeak(prevNode)) {
+        } else if (nextNode != null && isValley(nextNode)) {
+            Valley nextValley = new Valley(depth, nextNode);
+            addValleyToDepth(depth, nextValley);
+            insertValley(nextValley, depth);
+        } else if (prevNode != null && nextNode != null && prevNode.height > nextNode.height) {
             Node curr = nextNode;
-            int newDepth = 1;
-            while (curr != null && valleyHead != null && !isPeak(curr)) {
+            int newDepth = mostValuableValley.depth;
+            int nodesTraversed = 0;
+            while (curr != null && !isPeak(curr)) {
                 if (isValley(curr)) {
-                    Valley currValley = new Valley(newDepth - 1, curr);
+                    Valley currValley = new Valley(nodesTraversed, curr);
                     Valley newValley = new Valley(newDepth, curr);
                     TreeSet<Valley> oldSet = valleysAtDepth.get(currValley.depth);
                     if (oldSet != null) {
@@ -487,14 +491,12 @@ public class TreasureValleyExplorer {
                     }
                     addValleyToDepth(newDepth, newValley);
                     insertValley(newValley, newDepth);
+                    break;
                 }
                 curr = curr.next;
                 newDepth++;
+                nodesTraversed++;
             }
-        } else if (nextNode != null && isValley(nextNode)) {
-            Valley nextValley = new Valley(depth, nextNode);
-            addValleyToDepth(depth, nextValley);
-            insertValley(nextValley, depth);
         }
 
         return new IntPair(height, value);
@@ -535,25 +537,29 @@ public class TreasureValleyExplorer {
         // 1. the previous node becomes a valley - BEST CASE
         //      a. decrease the depth by 1
         //      b. insert the prev node into the valley DLL
-        // 2. the prev node is a peak
-        //      a. make sure that there are still valleys left (this is jank)
-        //      b. traverse until you hit the next peak, decreasing depth by 1
-        // 3. the next node becomes a valley
+        // 2. the next node becomes a valley - BEST CASE x2
         //      a. depth stays the same
-        //      b. insert the next node into the valley stuff
-        // 4. the next node is a peak
-        //      a. no change.
+        //      b. do the inserts
+        // 3. neither the prev nor the next are valleys or peaks (either ascend or descend points) - WORST CASE
+        //      a. CASE 1: descend points -> traverse until you hit the next peak (prev node height > next node height)
+        //          i. increase the depth of the valley that is encountered until the height of the next node > curr
+        //      b. CASE 2: ascend points -> no change
         if (prevNode != null && isValley(prevNode)) {
             depth--;
             Valley newNodeValley = new Valley(depth, prevNode);
             addValleyToDepth(depth, newNodeValley);
             insertValley(newNodeValley, depth);
-        } else if (prevNode != null && isPeak(prevNode)) {
+        } else if (nextNode != null && isValley(nextNode)) {
+            Valley nextValley = new Valley(depth, nextNode);
+            addValleyToDepth(depth, nextValley);
+            insertValley(nextValley, depth);
+        } else if (prevNode != null && nextNode != null && prevNode.height > nextNode.height) {
             Node curr = nextNode;
-            int newDepth = 1;
-            while (curr != null && valleyHead != null && !isPeak(curr)) {
+            int newDepth = leastValuableValley.depth;
+            int nodesTraversed = 0;
+            while (curr != null && !isPeak(curr)) {
                 if (isValley(curr)) {
-                    Valley currValley = new Valley(newDepth - 1, curr);
+                    Valley currValley = new Valley(nodesTraversed, curr);
                     Valley newValley = new Valley(newDepth, curr);
                     TreeSet<Valley> oldSet = valleysAtDepth.get(currValley.depth);
                     if (oldSet != null) {
@@ -565,14 +571,12 @@ public class TreasureValleyExplorer {
                     }
                     addValleyToDepth(newDepth, newValley);
                     insertValley(newValley, newDepth);
+                    break;
                 }
                 curr = curr.next;
                 newDepth++;
+                nodesTraversed++;
             }
-        } else if (nextNode != null && isValley(nextNode)) {
-            Valley nextValley = new Valley(depth, nextNode);
-            addValleyToDepth(depth, nextValley);
-            insertValley(nextValley, depth);
         }
 
         return new IntPair(height, value);

@@ -288,7 +288,7 @@ public class Evaluator {
     }
 
     public static void main(String[] args) {
-//        TestCase testCase = new TestCase("/Users/saloni/Desktop/Everything/School/College/Sophomore Year/CMSC420/cmsc420-swamy-hw2-spring25/tests/self_02_subset.txt");
+//        TestCase testCase = new TestCase("/Users/saloni/Desktop/Everything/School/College/Sophomore Year/CMSC420/cmsc420-swamy-hw2-spring25/tests/tc_00_manual_small.txt");
 //        System.out.println(testCase.toString());
 //        boolean passed = new Evaluator().runTestCase(testCase);
 //        if (passed)
